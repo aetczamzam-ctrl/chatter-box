@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Clone - Realtime</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+</head>
+<body class="bg-[#dadbd3] flex justify-center items-center h-screen">
+
+    <div id="auth-container" class="bg-white p-8 rounded-lg shadow-xl text-center w-80">
+        <h2 class="text-2xl font-bold text-[#075e54] mb-4">WhatsApp Login</h2>
+        <div id="phone-section">
+            <input type="text" id="phone-number" placeholder="Enter Mobile no" class="w-full p-2 border mb-4 rounded outline-none" value="+91">
+            <div id="recaptcha-container"></div>
+            <button onclick="sendOTP()" class="bg-[#075e54] text-white w-full py-2 rounded mt-2">Send OTP</button>
+        </div>
+        <div id="otp-section" class="hidden">
+            <input type="text" id="otp-code" placeholder="Enter 6-digit OTP" class="w-full p-2 border mb-4 rounded outline-none text-center tracking-widest">
+            <button onclick="verifyOTP()" class="bg-[#075e54] text-white w-full py-2 rounded">Verify & Login</button>
+        </div>
+    </div>
+
+    <div id="chat-container" class="hidden w-full max-w-md h-[95vh] bg-[#e5ddd5] flex flex-col shadow-2xl rounded-lg overflow-hidden border-8 border-black">
+        <div class="bg-[#075e54] p-4 text-white flex justify-between items-center shadow-lg">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 bg-white rounded-full text-[#075e54] flex items-center justify-center font-bold">W</div>
+                <h1 id="user-phone" class="font-bold text-sm">Chat</h1>
+            </div>
+            <button onclick="logout()" class="text-xs bg-red-500 px-3 py-1 rounded-full">Logout</button>
+        </div>
+
+        <div id="chat-box" class="flex-1 p-4 overflow-y-auto flex flex-col gap-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')]">
+            </div>
+
+        <div class="p-3 bg-[#f0f0f0] flex gap-2 items-center">
+            <input type="text" id="msg-input" placeholder="Type a message..." class="flex-1 p-2 rounded-full outline-none px-4 shadow-sm">
+            <button onclick="sendMessage()" class="bg-[#075e54] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md">➤</button>
+        </div>
+    </div>
+
+    <script>
+        // Firebase Config
+   const firebaseConfig = {
+  apiKey: "AIzaSyBkTkoWv_jdhl7pWNegqAKcJXSy3HKpgOg",
+  authDomain: "chatterbox-84045.firebaseapp.com",
+  projectId: "chatterbox-84045",
+  storageBucket: "chatterbox-84045.firebasestorage.app",
+  messagingSenderId: "894446670416",
+  appId: "1:894446670416:web:6b796db023f3eee1167755",
+  measurementId: "G-KPP065D801"
+        };
+
+        firebase.initializeApp(firebaseConfig);
+        const auth = firebase.auth();
+        const db = firebase.database();
+
+        // 1. Recaptcha Setup
+        window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
+            'size': 'invisible'
+        });
+
+        let confirmationResult;
+
+        // 2. OTP Pathano
+        async function sendOTP() {
+            const phoneNumber = document.getElementById('phone-number').value;
+            const appVerifier = window.recaptchaVerifier;
+
+            auth.signInWithPhoneNumber(phoneNumber, appVerifier)
+                .then((result) => {
+                    confirmationResult = result;
+                    document.getElementById('phone-section').classList.add('hidden');
+                    document.getElementById('otp-section').classList.remove('hidden');
+                    alert("OTP Sent to " + phoneNumber);
+                }).catch((error) => {
+                    console.error(error);
+                    alert("Error: " + error.message + "\nCheck if Phone Auth is enabled in Firebase Console.");
+                });
+        }
+
+        // 3. OTP Verify
+        function verifyOTP() {
+            const code = document.getElementById('otp-code').value;
+            confirmationResult.confirm(code).then((result) => {
+                console.log("Logged in!");
+            }).catch((error) => {
+                alert("Invalid OTP!");
+            });
+        }
+
+        // 4. Message Pathano
+        function sendMessage() {
+            const text = document.getElementById('msg-input').value;
+            const user = auth.currentUser;
+            if (text && user) {
+                db.ref('messages').push().set({
+                    sender: user.phoneNumber,
+                    text: text,
+                    timestamp: Date.now()
+                });
+                document.getElementById('msg-input').value = "";
+            }
+        }
+
+        // 5. Realtime Database theke data ana
+        function loadMessages() {
+            const chatBox = document.getElementById('chat-box');
+            db.ref('messages').on('child_added', (snapshot) => {
+                const data = snapshot.val();
+                const isMe = data.sender === auth.currentUser.phoneNumber;
+                
+                const msgDiv = document.createElement('div');
+                msgDiv.className = `p-2 rounded-lg max-w-[80%] shadow-sm ${isMe ? 'bg-[#dcf8c6] self-end' : 'bg-white self-start'}`;
+                msgDiv.innerHTML = `
+                    <p class="text-[10px] font-bold ${isMe ? 'text-green-700' : 'text-blue-600'}">${data.sender}</p>
+                    <p class="text-sm">${data.text}</p>
+                `;
+                chatBox.appendChild(msgDiv);
+                chatBox.scrollTop = chatBox.scrollHeight;
+            });
+        }
+
+        // 6. Auth State
+        auth.onAuthStateChanged(user => {
+            if (user) {
+                document.getElementById('auth-container').classList.add('hidden');
+                document.getElementById('chat-container').classList.remove('hidden');
+                document.getElementById('user-phone').innerText = user.phoneNumber;
+                loadMessages();
+            } else {
+                document.getElementById('auth-container').classList.remove('hidden');
+                document.getElementById('chat-container').classList.add('hidden');
+            }
+        });
+
+        function logout() { auth.signOut(); location.reload(); }
+    </script>
+</body>
+</html>
