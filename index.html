@@ -1,143 +1,180 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Clone - Realtime</title>
-    <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-app-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-auth-compat.js"></script>
-    <script src="https://www.gstatic.com/firebasejs/9.6.1/firebase-database-compat.js"></script>
+  <meta charset="UTF-8">
+  <title>Admin Panel</title>
+
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background: #f5f5f5;
+    }
+    .container {
+      max-width: 1100px;
+      margin: 30px auto;
+      padding: 20px;
+      background: #fff;
+      border-radius: 6px;
+      box-shadow: 0 0 10px rgba(0,0,0,0.1);
+    }
+    h1 {
+      text-align: center;
+      color: red;
+      margin-bottom: 20px;
+    }
+    .field {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    input, button, select {
+      padding: 10px 14px;
+      font-size: 15px;
+      margin: 5px;
+      border-radius: 6px;
+      border: 1px solid #ccc;
+    }
+    button {
+      background: #4CAF50;
+      color: #fff;
+      cursor: pointer;
+      border: none;
+    }
+    button:hover {
+      background: #43a047;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+    }
+    th, td {
+      padding: 10px;
+      border-bottom: 1px solid #ddd;
+      text-align: center;
+    }
+    video {
+      width: 130px;
+      height: 80px;
+    }
+  </style>
 </head>
-<body class="bg-[#dadbd3] flex justify-center items-center h-screen">
 
-    <div id="auth-container" class="bg-white p-8 rounded-lg shadow-xl text-center w-80">
-        <h2 class="text-2xl font-bold text-[#075e54] mb-4">WhatsApp Login</h2>
-        <div id="phone-section">
-            <input type="text" id="phone-number" placeholder="Enter Mobile no" class="w-full p-2 border mb-4 rounded outline-none" value="+91">
-            <div id="recaptcha-container"></div>
-            <button onclick="sendOTP()" class="bg-[#075e54] text-white w-full py-2 rounded mt-2">Send OTP</button>
-        </div>
-        <div id="otp-section" class="hidden">
-            <input type="text" id="otp-code" placeholder="Enter 6-digit OTP" class="w-full p-2 border mb-4 rounded outline-none text-center tracking-widest">
-            <button onclick="verifyOTP()" class="bg-[#075e54] text-white w-full py-2 rounded">Verify & Login</button>
-        </div>
-    </div>
+<body>
+<div class="container">
+  <h1>Admin Upload Panel</h1>
 
-    <div id="chat-container" class="hidden w-full max-w-md h-[95vh] bg-[#e5ddd5] flex flex-col shadow-2xl rounded-lg overflow-hidden border-8 border-black">
-        <div class="bg-[#075e54] p-4 text-white flex justify-between items-center shadow-lg">
-            <div class="flex items-center gap-2">
-                <div class="w-8 h-8 bg-white rounded-full text-[#075e54] flex items-center justify-center font-bold">W</div>
-                <h1 id="user-phone" class="font-bold text-sm">Chat</h1>
-            </div>
-            <button onclick="logout()" class="text-xs bg-red-500 px-3 py-1 rounded-full">Logout</button>
-        </div>
+  <div class="field">
+    <input type="file" id="fileInput" accept="">
+    <input type="text" id="rcInput" placeholder="Enter RC Number">
+    <button onclick="uploadVideo()">Upload</button>
+  </div>
 
-        <div id="chat-box" class="flex-1 p-4 overflow-y-auto flex flex-col gap-2 bg-[url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png')]">
-            </div>
+  <table>
+    <thead>
+      <tr>
+        <th>Status</th>
+        <th>RC No</th>
+        <th>Date</th>
+        <th>Video</th>
+        <th>Action</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
 
-        <div class="p-3 bg-[#f0f0f0] flex gap-2 items-center">
-            <input type="text" id="msg-input" placeholder="Type a message..." class="flex-1 p-2 rounded-full outline-none px-4 shadow-sm">
-            <button onclick="sendMessage()" class="bg-[#075e54] text-white w-10 h-10 rounded-full flex items-center justify-center shadow-md">➤</button>
-        </div>
-    </div>
+<!-- Firebase SDKs -->
+<script src="https://www.gstatic.com/firebasejs/9.12.1/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.12.1/firebase-database-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.12.1/firebase-storage-compat.js"></script>
 
-    <script>
-        // Firebase Config
-   const firebaseConfig = {
-  apiKey: "AIzaSyBkTkoWv_jdhl7pWNegqAKcJXSy3HKpgOg",
-  authDomain: "chatterbox-84045.firebaseapp.com",
-  projectId: "chatterbox-84045",
-  storageBucket: "chatterbox-84045.firebasestorage.app",
-  messagingSenderId: "894446670416",
-  appId: "1:894446670416:web:6b796db023f3eee1167755",
-  measurementId: "G-KPP065D801"
-        };
+<script>
+/* 🔥 FIREBASE CONFIG (CORRECT) */
+const firebaseConfig = {
+  apiKey: "AIzaSyD4ss64NXL7HA0a0KpwArNf2BMy5hmH2Z0",
+  authDomain: "chatsapp-4e639.firebaseapp.com",
+  databaseURL: "https://chatsapp-4e639-default-rtdb.firebaseio.com",
+  projectId: "chatsapp-4e639",
+  storageBucket: "chatsapp-4e639.appspot.app",
+  messagingSenderId: "956897440153",
+  appId: "1:956897440153:web:7cd6317f93b514c7d76308"
+};
 
-        firebase.initializeApp(firebaseConfig);
-        const auth = firebase.auth();
-        const db = firebase.database();
+firebase.initializeApp(firebaseConfig);
 
-        // 1. Recaptcha Setup
-        window.recaptchaVerifier = new firebase.auth.RecaptchaVerifier('recaptcha-container', {
-            'size': 'invisible'
-        });
+const db = firebase.database();
+const storage = firebase.storage();
+const uploadsRef = db.ref("Uploads");
 
-        let confirmationResult;
+/* ✅ UPLOAD FUNCTION */
+function uploadVideo() {
+  console.log("Upload clicked");
 
-        // 2. OTP Pathano
-        async function sendOTP() {
-            const phoneNumber = document.getElementById('phone-number').value;
-            const appVerifier = window.recaptchaVerifier;
+  const file = document.getElementById("fileInput").files[0];
+  const rc = document.getElementById("rcInput").value.trim();
 
-            auth.signInWithPhoneNumber(phoneNumber, appVerifier)
-                .then((result) => {
-                    confirmationResult = result;
-                    document.getElementById('phone-section').classList.add('hidden');
-                    document.getElementById('otp-section').classList.remove('hidden');
-                    alert("OTP Sent to " + phoneNumber);
-                }).catch((error) => {
-                    console.error(error);
-                    alert("Error: " + error.message + "\nCheck if Phone Auth is enabled in Firebase Console.");
-                });
-        }
+  if (!file || !rc) {
+    alert("File & RC number required");
+    return;
+  }
 
-        // 3. OTP Verify
-        function verifyOTP() {
-            const code = document.getElementById('otp-code').value;
-            confirmationResult.confirm(code).then((result) => {
-                console.log("Logged in!");
-            }).catch((error) => {
-                alert("Invalid OTP!");
-            });
-        }
+  const fileName = Date.now() + "_" + file.name;
+  const storageRef = storage.ref("videos/" + fileName);
 
-        // 4. Message Pathano
-        function sendMessage() {
-            const text = document.getElementById('msg-input').value;
-            const user = auth.currentUser;
-            if (text && user) {
-                db.ref('messages').push().set({
-                    sender: user.phoneNumber,
-                    text: text,
-                    timestamp: Date.now()
-                });
-                document.getElementById('msg-input').value = "";
-            }
-        }
+  storageRef.put(file)
+    .then(snap => snap.ref.getDownloadURL())
+    .then(url => {
+      uploadsRef.push({
+        rc: rc,
+        videoUrl: url,
+        status: "Pending",
+        time: new Date().toISOString()
+      });
 
-        // 5. Realtime Database theke data ana
-        function loadMessages() {
-            const chatBox = document.getElementById('chat-box');
-            db.ref('messages').on('child_added', (snapshot) => {
-                const data = snapshot.val();
-                const isMe = data.sender === auth.currentUser.phoneNumber;
-                
-                const msgDiv = document.createElement('div');
-                msgDiv.className = `p-2 rounded-lg max-w-[80%] shadow-sm ${isMe ? 'bg-[#dcf8c6] self-end' : 'bg-white self-start'}`;
-                msgDiv.innerHTML = `
-                    <p class="text-[10px] font-bold ${isMe ? 'text-green-700' : 'text-blue-600'}">${data.sender}</p>
-                    <p class="text-sm">${data.text}</p>
-                `;
-                chatBox.appendChild(msgDiv);
-                chatBox.scrollTop = chatBox.scrollHeight;
-            });
-        }
+      alert("Upload Successful ✅");
+      document.getElementById("fileInput").value = "";
+      document.getElementById("rcInput").value = "";
+    })
+    .catch(err => {
+      console.error(err);
+      alert("Upload failed ❌ " + err.message);
+    });
+}
 
-        // 6. Auth State
-        auth.onAuthStateChanged(user => {
-            if (user) {
-                document.getElementById('auth-container').classList.add('hidden');
-                document.getElementById('chat-container').classList.remove('hidden');
-                document.getElementById('user-phone').innerText = user.phoneNumber;
-                loadMessages();
-            } else {
-                document.getElementById('auth-container').classList.remove('hidden');
-                document.getElementById('chat-container').classList.add('hidden');
-            }
-        });
+/* ✅ LOAD DATA */
+uploadsRef.on("value", snap => {
+  const data = snap.val();
+  const tbody = document.getElementById("tableBody");
+  tbody.innerHTML = "";
 
-        function logout() { auth.signOut(); location.reload(); }
-    </script>
+  if (!data) return;
+
+  Object.keys(data).reverse().forEach(key => {
+    const item = data[key];
+
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${item.status}</td>
+      <td>${item.rc}</td>
+      <td>${new Date(item.time).toLocaleString()}</td>
+      <td>
+        <video controls>
+          <source src="${item.videoUrl}" type="video/mp4">
+        </video>
+      </td>
+      <td>
+        <button onclick="deleteItem('${key}')">Delete</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+});
+
+function deleteItem(key) {
+  if (confirm("Delete this record?")) {
+    uploadsRef.child(key).remove();
+  }
+}
+</script>
 </body>
 </html>
